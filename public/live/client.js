@@ -92,7 +92,7 @@ async function start() {
   // globalThis.libraryPresence and the 'librarypresence' event on window.
   const base = new URL('../', import.meta.url).pathname;
   const id = (localStorage.getItem(ID) ?? (localStorage.setItem(ID, crypto.randomUUID()), localStorage.getItem(ID)));
-  const where = () => location.pathname.slice(base.length).split('/')[0].replace(/\.html$/, '').replace(/^index$/, '');
+  const where = () => globalThis.libraryWhere?.() ?? location.pathname.slice(base.length).split('/')[0].replace(/\.html$/, '').replace(/^index$/, ''); // (the app page says which game its frame shows)
   // a game this browser made and nobody has joined is offered to the others only if its owner has said so (SHARE)
   const join = () => (localStorage.getItem(SHARE) === '1' ? globalThis.libraryShell?.openCode ?? '' : '');
   const say = () => live.peer.setPresence({ id, name: localStorage.getItem(NAME) ?? '', where: where(), join: join() });
