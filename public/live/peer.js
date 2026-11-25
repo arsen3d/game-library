@@ -4,13 +4,13 @@
 //   have { seq }   what I have (0: nothing)
 //   want {}        send me your manifest   ->  manifest { text, sig }
 //   get { h }      send me one file        ->  blob { h } + bytes, or none { h }
-//   here { id, name, where }   who I am and where I am on the site, said on meeting and now and then (unsigned: for display only)
+//   here { id, name, where, join }   who I am, where I am on the site, and the code of a game I made that nobody has joined (if I chose to show it), said on meeting and now and then (unsigned: for display only)
 const TIMEOUT = 20_000;
 const PARALLEL = 4;
 const STALE = 75_000; // a visitor not heard from for this long is no longer shown
 const words = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, n);
-/** What a visitor says about itself, made safe to show: a browser's id, a name of at most 24 characters, and a place on the site. */
-export const presence = (m) => (typeof m?.id === 'string' && /^[a-z0-9-]{8,40}$/.test(m.id) ? { id: m.id, name: words(m.name, 24), where: /^[a-z0-9-]{0,24}$/.test(m.where ?? '') ? m.where ?? '' : '' } : null);
+/** What a visitor says about itself, made safe to show: a browser's id, a name of at most 24 characters, a place on the site, and a room code. */
+export const presence = (m) => (typeof m?.id === 'string' && /^[a-z0-9-]{8,40}$/.test(m.id) ? { id: m.id, name: words(m.name, 24), where: /^[a-z0-9-]{0,24}$/.test(m.where ?? '') ? m.where ?? '' : '', join: /^[A-Z0-9-]{8,9}$/.test(m.join ?? '') ? m.join : '' } : null);
 
 export class LivePeer {
   /**

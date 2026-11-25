@@ -6,7 +6,7 @@ import { connect, installed, isOff, registerWorker, reset, roomCode, siteUrl } f
 import { applyChanges, changes, hashes, safeToReload } from './reload.js';
 
 const TRIED = 'library-live-tried';
-const NAME = 'library-name', ID = 'library-presence-id';
+const NAME = 'library-name', ID = 'library-presence-id', SHARE = 'library-share-tables';
 const unnamed = (v) => String(v ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 24);
 const code = roomCode();
 if (self === top && !globalThis.libraryDev && !isOff() && code && globalThis.LIVE_PUBLIC_KEY) {
@@ -93,18 +93,23 @@ async function start() {
   const base = new URL('../', import.meta.url).pathname;
   const id = (localStorage.getItem(ID) ?? (localStorage.setItem(ID, crypto.randomUUID()), localStorage.getItem(ID)));
   const where = () => location.pathname.slice(base.length).split('/')[0].replace(/\.html$/, '').replace(/^index$/, '');
-  const say = () => live.peer.setPresence({ id, name: localStorage.getItem(NAME) ?? '', where: where() });
+  // a game this browser made and nobody has joined is offered to the others only if its owner has said so (SHARE)
+  const join = () => (localStorage.getItem(SHARE) === '1' ? globalThis.libraryShell?.openCode ?? '' : '');
+  const say = () => live.peer.setPresence({ id, name: localStorage.getItem(NAME) ?? '', where: where(), join: join() });
   const tell = () => window.dispatchEvent(new Event('librarypresence'));
   globalThis.libraryPresence = {
     id,
     connected: true,
     get name() { return localStorage.getItem(NAME) ?? ''; },
     setName(name) { localStorage.setItem(NAME, unnamed(name)); say(); tell(); },
+    get sharing() { return localStorage.getItem(SHARE) === '1'; },
+    share(on) { localStorage.setItem(SHARE, on ? '1' : '0'); say(); tell(); },
     /** Everyone on the site as far as this browser can tell, this visitor first: { id, name, where, self }. */
-    list: () => [{ id, name: localStorage.getItem(NAME) ?? '', where: where(), self: true }, ...live.peer.online().filter((p) => p.id !== id).map((p) => ({ id: p.id, name: p.name, where: p.where, self: false }))],
+    list: () => [{ id, name: localStorage.getItem(NAME) ?? '', where: where(), join: '', self: true }, ...live.peer.online().filter((p) => p.id !== id).map((p) => ({ id: p.id, name: p.name, where: p.where, join: p.join, self: false }))],
   };
   say();
   setInterval(say, 20_000);
+  addEventListener('librarytable', say); // a game was made here, or somebody joined it
   live.peer.onPeers = () => { refresh(); tell(); };
   tell();
   await refresh();
