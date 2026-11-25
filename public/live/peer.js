@@ -4,8 +4,13 @@
 //   have { seq }   what I have (0: nothing)
 //   want {}        send me your manifest   ->  manifest { text, sig }
 //   get { h }      send me one file        ->  blob { h } + bytes, or none { h }
+//   here { id, name, where }   who I am and where I am on the site, said on meeting and now and then (unsigned: for display only)
 const TIMEOUT = 20_000;
 const PARALLEL = 4;
+const STALE = 75_000; // a visitor not heard from for this long is no longer shown
+const words = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, n);
+/** What a visitor says about itself, made safe to show: a browser's id, a name of at most 24 characters, and a place on the site. */
+export const presence = (m) => (typeof m?.id === 'string' && /^[a-z0-9-]{8,40}$/.test(m.id) ? { id: m.id, name: words(m.name, 24), where: /^[a-z0-9-]{0,24}$/.test(m.where ?? '') ? m.where ?? '' : '' } : null);
 
 export class LivePeer {
   /**
@@ -18,6 +23,7 @@ export class LivePeer {
     this.peers = new Map(); // id -> { send, seq }
     this.waiting = new Map(); // `${id} ${key}` -> { resolve, reject }
     this.busy = false;
+    this.me = null; // what this visitor says about itself: { id, name, where }
   }
 
   async seq() { return (await this.store.signed())?.seq ?? 0; }
@@ -27,6 +33,20 @@ export class LivePeer {
     this.peers.set(id, { send, seq: 0 });
     this.onPeers();
     send({ t: 'have', seq: await this.seq() });
+    if (this.me) send({ t: 'here', ...this.me });
+  }
+
+  /** Says who this visitor is, to everyone now and to each one met later. */
+  setPresence(info) {
+    this.me = presence(info);
+    if (this.me) for (const p of this.peers.values()) p.send({ t: 'here', ...this.me });
+  }
+
+  /** The other visitors who have said who they are, once each (a person with two tabs open is one), newest word first. */
+  online(now = Date.now()) {
+    const seen = new Map();
+    for (const p of this.peers.values()) if (p.info && now - p.info.at < STALE && !(seen.get(p.info.id)?.at > p.info.at)) seen.set(p.info.id, p.info);
+    return [...seen.values()].sort((a, b) => b.at - a.at);
   }
 
   remove(id) {
@@ -48,6 +68,11 @@ export class LivePeer {
       peer.seq = m.seq;
       this.onPeers();
       return this.update();
+    }
+    if (m.t === 'here') {
+      const info = presence(m);
+      if (info) { peer.info = { ...info, at: Date.now() }; this.onPeers(); }
+      return;
     }
     if (m.t === 'want') {
       const s = await this.store.signed();
