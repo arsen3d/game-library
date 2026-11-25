@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Game Library (live)</title>
+  <style>
+    body { margin: 0; min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 1rem; padding: 1.5rem; text-align: center; background: #080c1a; color: #e9e6dc; font: 16px/1.45 system-ui, sans-serif; }
+    p { max-width: 26rem; margin: 0; color: #a3a9c2; }
+    button { font: inherit; min-height: 44px; padding: .6em 1em; color: #e9e6dc; background: #141b36; border: 1px solid #33406f; border-radius: 10px; cursor: pointer; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Game Library</h1>
+  <p id="say" role="status">Connecting to the live version…</p>
+  <button id="saved" hidden>Open the last live copy</button>
+  <button id="published" hidden>Open the published version</button>
+  <script type="module" src="start.js"></script>
+</body>
+</html>
